@@ -1085,6 +1085,17 @@ void set_btn_config(gptokeyb_config *config, int btn, const char *name, const ch
             config->button[btn].action  = ACT_SPECIAL;
             config->button[btn].special = SPC_DIR_COMMIT_SLOT_4;
         }
+        else if (strcasecmp(token, "dir_space") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_SPACE;
+        }
         else if (strcasecmp(token, "hold_state") == 0)
         {
             if (btn >= GBTN_MAX)

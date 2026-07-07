@@ -676,8 +676,19 @@ void update_button(int btn, bool pressed)
 
             if (button->keycode != 0)
             {
+                int mod = button->modifier;
+                // In text input mode only: holding A/B/R1 adds Ctrl/Alt/Shift
+                if (input_active())
+                {
+                    if (is_pressed(GBTN_A))
+                        mod |= MOD_CTRL;
+                    if (is_pressed(GBTN_B))
+                        mod |= MOD_ALT;
+                    if (is_pressed(GBTN_R1))
+                        mod |= MOD_SHIFT;
+                }
                 GPTK2_DEBUG("PRESSED '%s' -> '%s'\n", gbtn_names[btn], find_keycode(button->keycode));
-                emitKey(kb_uinp_fd, button->keycode, true, button->modifier);
+                emitKey(kb_uinp_fd, button->keycode, true, mod);
 
                 if (button->repeat && !(current_state.in_repeat & btn_mask))
                 {
@@ -791,6 +802,14 @@ void update_button(int btn, bool pressed)
                     input_dir_commit_slot(3);
                 break;
 
+            case SPC_DIR_SPACE:
+                if (input_active())
+                {
+                    emitTextInputKey(KEY_SPACE, false);
+                    haptic_bump(0x6FFF, 40);
+                }
+                break;
+
             default:
                 break;
             }
@@ -807,8 +826,17 @@ void update_button(int btn, bool pressed)
 
         if (button->keycode != 0)
         {
+            int mod = button->modifier;
+            // In text input mode only: holding A adds Ctrl, holding R1 adds Shift
+            if (input_active())
+            {
+                if (is_pressed(GBTN_A))
+                    mod |= MOD_CTRL;
+                if (is_pressed(GBTN_R1))
+                    mod |= MOD_SHIFT;
+            }
             GPTK2_DEBUG("PRESSED '%s' -> '%s'\n", gbtn_names[btn], find_keycode(button->keycode));
-            emitKey(kb_uinp_fd, button->keycode, true, button->modifier);
+            emitKey(kb_uinp_fd, button->keycode, true, mod);
         }
     }
     else if (was_released(btn))
@@ -837,9 +865,27 @@ void update_button(int btn, bool pressed)
 
         if (button->keycode != 0)
         {
+            int mod = button->modifier;
+            // In text input mode only: holding A adds Ctrl, holding R1 adds Shift
+            if (input_active())
+            {
+                if (is_pressed(GBTN_A))
+                    mod |= MOD_CTRL;
+                if (is_pressed(GBTN_R1))
+                    mod |= MOD_SHIFT;
+            }
             GPTK2_DEBUG("RELEASE '%s' -> '%s'\n", gbtn_names[btn], find_keycode(button->keycode));
-            emitKey(kb_uinp_fd, button->keycode, false, button->modifier);
+            emitKey(kb_uinp_fd, button->keycode, false, mod);
         }
+
+        // When A, B, or R1 are released, always release their modifier
+        if (btn == GBTN_A)
+            emitModifier(false, MOD_CTRL);
+        if (btn == GBTN_B)
+            emitModifier(false, MOD_ALT);
+        if (btn == GBTN_R1)
+            emitModifier(false, MOD_SHIFT);
+
     }
 
     // Poll left analog stick for combo direction detection

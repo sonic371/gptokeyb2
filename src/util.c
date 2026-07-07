@@ -373,19 +373,45 @@ void emitKey(int fd, int code, bool pressed, int modifier)
 
 void emitTextInputKey(int code, bool uppercase)
 {
-    if (uppercase)
-    {   //capitalise capital letters by holding shift
-        emitKey(kb_uinp_fd, KEY_LEFTSHIFT, true, 0);
+    int mod = 0;
+
+    // In text input mode: holding A/B/R1 adds Ctrl/Alt/Shift
+    if (input_active())
+    {
+        if (is_pressed(GBTN_A))
+            mod |= MOD_CTRL;
+        if (is_pressed(GBTN_B))
+            mod |= MOD_ALT;
+        if (is_pressed(GBTN_R1))
+            mod |= MOD_SHIFT;
     }
 
-    emitKey(kb_uinp_fd, code, true, 0);
-    SDL_Delay(16);
-    emitKey(kb_uinp_fd, code, false, 0);
-    SDL_Delay(16);
+    // When mod has SHIFT from R1, the keycode is already the right character
+    // (e.g., 'l' stays 'l', no shift key needed). When mod has CTRL from A,
+    // we emit the key with the modifier attached.
+    if (mod != 0)
+    {
+        emitKey(kb_uinp_fd, code, true, mod);
+        SDL_Delay(16);
+        emitKey(kb_uinp_fd, code, false, mod);
+        SDL_Delay(16);
+    }
+    else
+    {
+        if (uppercase)
+        {   //capitalise capital letters by holding shift
+            emitKey(kb_uinp_fd, KEY_LEFTSHIFT, true, 0);
+        }
 
-    if (uppercase)
-    {   //release shift if held
-        emitKey(kb_uinp_fd, KEY_LEFTSHIFT, false, 0);
+        emitKey(kb_uinp_fd, code, true, 0);
+        SDL_Delay(16);
+        emitKey(kb_uinp_fd, code, false, 0);
+        SDL_Delay(16);
+
+        if (uppercase)
+        {   //release shift if held
+            emitKey(kb_uinp_fd, KEY_LEFTSHIFT, false, 0);
+        }
     }
 }
 

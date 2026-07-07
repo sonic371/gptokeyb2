@@ -475,9 +475,6 @@ void input_stop()
 {
     if (active_word_set != NULL || active_char_set != NULL)
     {
-        // Type a space when leaving text input mode (brief L2 press = space)
-        emitTextInputKey(KEY_SPACE, false);
-        haptic_bump(0x6FFF, 40);
         printf("Cleared input sets\n");
     }
 
@@ -1205,7 +1202,24 @@ void input_dir_commit_current()
     // Type the character now (no preview was typed during the combo)
     char c = input_text[current_offset];
     if (c != 0)
-        input_add_char();
+    {
+        // If R1 is held, type the uppercase version
+        if (is_pressed(GBTN_R1))
+        {
+            // Look up the uppercase version via toupper and find its keycode
+            char upper = toupper(c);
+            short keycode = characters[(unsigned char)upper].keycode;
+            bool shift = characters[(unsigned char)upper].shift;
+            if (keycode != 0)
+                emitTextInputKey(keycode, shift);
+            else
+                input_add_char();
+        }
+        else
+        {
+            input_add_char();
+        }
+    }
     current_offset++;
     if ((size_t)current_offset >= MAX_TEXT_LENGTH)
         current_offset = MAX_TEXT_LENGTH - 1;

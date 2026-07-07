@@ -61,7 +61,7 @@
 #define GPTK2_VERSION "2.00.03"
 
 // Uncomment for verbose debug output:
-//#define GPTK2_DEBUG_ENABLED
+#define GPTK2_DEBUG_ENABLED
 
 // DEBUGGAH
 #ifdef GPTK2_DEBUG_ENABLED
@@ -219,6 +219,7 @@ enum
     SPC_DIR_COMMIT_SLOT_2, // 5 = commit slot 1
     SPC_DIR_COMMIT_SLOT_3, // 6 = commit slot 2
     SPC_DIR_COMMIT_SLOT_4, // 7 = commit slot 3
+    SPC_DIR_SPACE,
 };
 
 enum
@@ -507,6 +508,7 @@ void emitMouseWheel(int wheel);
 void emitAxisMotion(int code, int value);
 void emitTextInputKey(int code, bool uppercase);
 void emitKey(int fd, int code, bool is_pressed, int modifier);
+void emitModifier(bool pressed, int modifier);
 void handleAnalogTrigger(bool is_triggered, bool *was_triggered, int key, int modifier);
 
 // input.c
