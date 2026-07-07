@@ -516,6 +516,12 @@ int main(int argc, char* argv[])
         }
     }
 
+    if (haptic_device != NULL)
+    {
+        SDL_HapticStopAll(haptic_device);
+        SDL_HapticClose(haptic_device);
+    }
+
     SDL_Quit();
 
     /*

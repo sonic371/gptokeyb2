@@ -991,6 +991,94 @@ void set_btn_config(gptokeyb_config *config, int btn, const char *name, const ch
             config->button[btn].action  = ACT_SPECIAL;
             config->button[btn].special = SPC_CANCEL_INPUT;
         }
+        else if (strcasecmp(token, "dir_combo_right") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMBO_RIGHT;
+        }
+        else if (strcasecmp(token, "dir_combo_up") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMBO_UP;
+        }
+        else if (strcasecmp(token, "dir_combo_left") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMBO_LEFT;
+        }
+        else if (strcasecmp(token, "dir_combo_down") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMBO_DOWN;
+        }
+        else if (strcasecmp(token, "dir_slot_1") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMMIT_SLOT_1;
+        }
+        else if (strcasecmp(token, "dir_slot_2") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMMIT_SLOT_2;
+        }
+        else if (strcasecmp(token, "dir_slot_3") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMMIT_SLOT_3;
+        }
+        else if (strcasecmp(token, "dir_slot_4") == 0)
+        {
+            if (btn >= GBTN_MAX)
+            {
+                fprintf(stderr, "error: unable to set %s to %s\n", token, gbtn_names[btn]);
+                return;
+            }
+
+            config->button[btn].action  = ACT_SPECIAL;
+            config->button[btn].special = SPC_DIR_COMMIT_SLOT_4;
+        }
         else if (strcasecmp(token, "hold_state") == 0)
         {
             if (btn >= GBTN_MAX)
@@ -1185,7 +1273,7 @@ void set_btn_config(gptokeyb_config *config, int btn, const char *name, const ch
                 {
                     set_btn_as_mouse(btn, config, MOUSE_MOVEMENT_ON);
 
-                    for (int sbtn=special_button_min(btn), i=0; sbtn < special_button_max(btn); sbtn++, i++)
+                    for (int sbtn=special_button_min(btn); sbtn < special_button_max(btn); sbtn++)
                     {
                         config->button[sbtn].keycode = 0;
                         config->button[sbtn].action  = ACT_NONE;
@@ -1204,7 +1292,7 @@ void set_btn_config(gptokeyb_config *config, int btn, const char *name, const ch
                 {
                     set_btn_as_absolute_mouse(btn, config, MOUSE_MOVEMENT_ON);
 
-                    for (int sbtn=special_button_min(btn), i=0; sbtn < special_button_max(btn); sbtn++, i++)
+                    for (int sbtn=special_button_min(btn); sbtn < special_button_max(btn); sbtn++)
                     {
                         config->button[sbtn].keycode = 0;
                         config->button[sbtn].action  = ACT_NONE;

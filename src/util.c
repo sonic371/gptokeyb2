@@ -580,29 +580,17 @@ void string_quit()
 {
     string_reg *current_string = root_string;
     string_reg *next_string;
-    int total_strings = 0;
-    int total_lookups = 0;
-    int lookup_factor = 0;
-
     // printf("# String Quit\n");
-    int i=1;
     while (current_string != NULL)
     {
         next_string = current_string->next;
-
-        total_strings++;
-        total_lookups += current_string->counter;
-        lookup_factor += i * current_string->counter;
 
         // printf("# - %s\n", current_string->string);
         free(current_string->string);
         free(current_string);
 
         current_string = next_string;
-        i++;
     }
-
-    // printf("# Stats: %d, %d, %d\n", total_strings, total_lookups, lookup_factor);
 }
 
 const char *string_register(const char *string)

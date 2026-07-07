@@ -747,6 +747,47 @@ void update_button(int btn, bool pressed)
                     input_cancel();
                 break;
 
+            // Direction-combo text input
+            case SPC_DIR_COMBO_RIGHT:
+                if (input_active())
+                    input_dir_combo_press(0);
+                break;
+
+            case SPC_DIR_COMBO_UP:
+                if (input_active())
+                    input_dir_combo_press(1);
+                break;
+
+            case SPC_DIR_COMBO_LEFT:
+                if (input_active())
+                    input_dir_combo_press(2);
+                break;
+
+            case SPC_DIR_COMBO_DOWN:
+                if (input_active())
+                    input_dir_combo_press(3);
+                break;
+
+            case SPC_DIR_COMMIT_SLOT_1:
+                if (input_active())
+                    input_dir_commit_slot(0);
+                break;
+
+            case SPC_DIR_COMMIT_SLOT_2:
+                if (input_active())
+                    input_dir_commit_slot(1);
+                break;
+
+            case SPC_DIR_COMMIT_SLOT_3:
+                if (input_active())
+                    input_dir_commit_slot(2);
+                break;
+
+            case SPC_DIR_COMMIT_SLOT_4:
+                if (input_active())
+                    input_dir_commit_slot(3);
+                break;
+
             default:
                 break;
             }
@@ -797,4 +838,7 @@ void update_button(int btn, bool pressed)
             emitKey(kb_uinp_fd, button->keycode, false, button->modifier);
         }
     }
+
+    // Poll left analog stick for combo direction detection
+    input_dir_analog_poll();
 }

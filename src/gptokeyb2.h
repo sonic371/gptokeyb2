@@ -60,7 +60,8 @@
 
 #define GPTK2_VERSION "2.00.03"
 
-#define GPTK2_DEBUG_ENABLED
+// Uncomment for verbose debug output:
+//#define GPTK2_DEBUG_ENABLED
 
 // DEBUGGAH
 #ifdef GPTK2_DEBUG_ENABLED
@@ -207,6 +208,16 @@ enum
 
     SPC_ACCEPT_INPUT,
     SPC_CANCEL_INPUT,
+
+    // Direction-combo text input (fighting-game-style)
+    SPC_DIR_COMBO_RIGHT,   // 0 = RIGHT direction (first press of combo)
+    SPC_DIR_COMBO_UP,      // 1 = UP
+    SPC_DIR_COMBO_LEFT,    // 2 = LEFT
+    SPC_DIR_COMBO_DOWN,    // 3 = DOWN
+    SPC_DIR_COMMIT_SLOT_1, // 4 = commit slot 0
+    SPC_DIR_COMMIT_SLOT_2, // 5 = commit slot 1
+    SPC_DIR_COMMIT_SLOT_3, // 6 = commit slot 2
+    SPC_DIR_COMMIT_SLOT_4, // 7 = commit slot 3
 };
 
 enum
@@ -421,6 +432,11 @@ extern char kill_process_name[];
 
 extern char game_prefix[];
 
+// Haptic/rumble feedback
+extern SDL_Haptic *haptic_device;
+extern bool haptic_enabled;
+void haptic_bump(Uint16 strength, Uint32 duration_ms);
+
 // config.c
 void config_init();
 void config_quit();
@@ -527,6 +543,13 @@ void input_prev_word(int amount);
 void input_upper_case();
 void input_lower_case();
 void input_toggle_case();
+
+// Direction-combo text input
+void input_dir_combo_press(int direction);
+void input_dir_commit_slot(int slot);
+void input_dir_commit_current();
+void input_dir_analog_poll();
+void input_dir_reset_position();
 
 // state.c
 bool is_pressed(int btn);

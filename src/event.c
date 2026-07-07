@@ -38,6 +38,75 @@
 #include "gptokeyb2.h"
 
 static SDL_JoystickID existing_controllers[MAX_CONTROLLERS];
+
+// Haptic/rumble globals
+SDL_Haptic *haptic_device = NULL;
+bool haptic_enabled = false;
+
+
+void haptic_init_from_controller(SDL_JoystickID which)
+{
+    if (haptic_enabled)
+        return; // already initialized
+
+    SDL_Joystick *joy = SDL_JoystickFromInstanceID(which);
+    if (joy == NULL)
+        return;
+
+    SDL_Haptic *haptic = SDL_HapticOpenFromJoystick(joy);
+    if (haptic == NULL)
+        return;
+
+    // Check what's supported
+    unsigned int supported = SDL_HapticQuery(haptic);
+    if (supported & SDL_HAPTIC_LEFTRIGHT)
+    {
+        // Prefer LEFTRIGHT — works well on Xbox controllers
+        printf("Haptic initialized (LEFTRIGHT)\n");
+    }
+    else if (SDL_HapticRumbleInit(haptic) == 0)
+    {
+        // Fallback to rumble
+        printf("Haptic initialized (rumble)\n");
+    }
+    else
+    {
+        SDL_HapticClose(haptic);
+        return;
+    }
+
+    haptic_device = haptic;
+    haptic_enabled = true;
+}
+
+
+static int haptic_effect_id = -1;
+
+void haptic_bump(Uint16 strength, Uint32 duration_ms)
+{
+    if (!haptic_enabled || haptic_device == NULL)
+        return;
+
+    // Destroy previous effect if it exists
+    if (haptic_effect_id >= 0)
+        SDL_HapticDestroyEffect(haptic_device, haptic_effect_id);
+
+    // Xbox 360 controllers on Linux support SDL_HAPTIC_LEFTRIGHT
+    // (left/right motor weights). Reuse one effect slot.
+    SDL_HapticEffect effect;
+    memset(&effect, 0, sizeof(effect));
+    effect.type = SDL_HAPTIC_LEFTRIGHT;
+    effect.leftright.length = duration_ms;
+    effect.leftright.large_magnitude = strength;
+    effect.leftright.small_magnitude = strength;
+
+    haptic_effect_id = SDL_HapticNewEffect(haptic_device, &effect);
+    if (haptic_effect_id >= 0)
+    {
+        SDL_HapticRunEffect(haptic_device, haptic_effect_id, 1);
+    }
+}
+
 static int num_existing_controllers = 0;
 static SDL_JoystickID virtual_controller_id = -1;
 
@@ -118,6 +187,9 @@ void handleInputEvent(const SDL_Event *event)
                 {
                     printf(" opened.\n");
                     controller_add_fd(event->cdevice.which, controller_fd);
+                    // Initialize haptic on the first real controller
+                    if (!haptic_enabled)
+                        haptic_init_from_controller(instance_id);
                 }
             }
         }
