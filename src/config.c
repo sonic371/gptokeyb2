@@ -718,6 +718,12 @@ void set_cfg_config(const char *name, const char *value, token_ctx *token_state)
     else if (strcasecmp(name, "mouse_delay") == 0)
         current_state.mouse_delay = atoi_between(value, 16, 3000, SDL_DEFAULT_REPEAT_DELAY);
 
+    else if (strcasecmp(name, "mouse_accel_power") == 0)
+        current_state.mouse_accel_power = atoi_between(value, 10, 500, 100);
+
+    else if (strcasecmp(name, "scroll_accel_power") == 0)
+        current_state.scroll_accel_power = atoi_between(value, 10, 500, 200);
+
     else if (strcasecmp(name, "deadzone_delay") == 0)
         ((void)0);
 

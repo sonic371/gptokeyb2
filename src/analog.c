@@ -212,6 +212,9 @@ int deadzone_get_mode(const char *str)
     else if (strcasecmp(str, "hybrid") == 0)
         return DZ_HYBRID;
 
+    else if (strcasecmp(str, "exp") == 0)
+        return DZ_EXP;
+
     else if (strcasecmp(str, "default") == 0)
         return DZ_DEFAULT;
 
@@ -245,6 +248,9 @@ const char *deadzone_mode_str(int mode)
 
     case DZ_HYBRID:
         return "hybrid";
+
+    case DZ_EXP:
+        return "exp";
     }
 }
 
@@ -295,6 +301,14 @@ void deadzone_mouse_calc(int *x, int *y, int in_x, int in_y)
 
     case DZ_HYBRID:
         dz_hybrid(&vec2d_ouput, &vec2d_input, dz);
+        break;
+
+    case DZ_EXP:
+        {
+            float power = (float)current_state.mouse_accel_power / 100.0f;
+            if (power < 0.1f) power = 1.0f;
+            dz_exp(&vec2d_ouput, &vec2d_input, dz, power);
+        }
         break;
     }
 

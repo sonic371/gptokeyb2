@@ -108,6 +108,7 @@ enum
     DZ_SLOPED_AXIAL,
     DZ_SLOPED_SCALED_AXIAL,
     DZ_HYBRID,
+    DZ_EXP,
 };
 
 
@@ -334,10 +335,12 @@ typedef struct
 
     int deadzone_mode;
     int deadzone_scale;
+    int mouse_accel_power;    // 100 = power 1.00 (linear), 200 = power 2.00, etc
 
     int deadzone_x;
     int deadzone_y;
     int deadzone_triggers;
+    int scroll_accel_power;    // 100 = linear, 200 = quadratic, etc
 
     int hotkey_gbtn;
     bool running;
@@ -550,6 +553,9 @@ void input_dir_commit_slot(int slot);
 void input_dir_commit_current();
 void input_dir_analog_poll();
 void input_dir_reset_position();
+
+// Adaptive scroll acceleration
+void scroll_adaptive_poll();
 
 // state.c
 bool is_pressed(int btn);

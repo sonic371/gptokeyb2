@@ -35,6 +35,7 @@
 *
 */
 
+#include <math.h>
 #include "gptokeyb2.h"
 
 
@@ -971,6 +972,9 @@ static int dir_get_stick_dir(int ax, int ay)
 #define STICK_NONE 0
 #define STICK_LEFT 1
 #define STICK_RIGHT 2
+
+// Adaptive scroll state
+static Uint32 scroll_timer = 0;
 static int stick_active = STICK_NONE;
 
 
@@ -1225,5 +1229,59 @@ void input_dir_reset_position()
     dir_group_size = 4;
     dir_stick_last_dir = -1;
     stick_active = STICK_NONE;
+    scroll_timer = 0;
     // printf("dir_reset_position\n");
+}
+
+
+// ---------------------------------------------------------------------------
+// Adaptive scroll acceleration
+// ---------------------------------------------------------------------------
+// Reads the right analog Y value and emits scroll events with speed
+// proportional to how far the stick is pushed.
+
+#define SCROLL_DEADZONE 5000
+#define SCROLL_MAX_RATE 20    // ms between scrolls at full tilt
+#define SCROLL_MIN_RATE 150   // ms between scrolls at minimum push
+
+void scroll_adaptive_poll()
+{
+    // Don't scroll while in text input mode (right stick used for combos)
+    if (input_active())
+        return;
+
+    int ay = current_state.current_right_analog_y;
+    int abs_y = abs(ay);
+
+    // Deadzone check
+    if (abs_y < SCROLL_DEADZONE)
+    {
+        scroll_timer = 0;
+        return;
+    }
+
+    // Calculate scroll rate based on stick magnitude
+    // Map stick magnitude (SCROLL_DEADZONE..32768) to rate (SCROLL_MIN_RATE..SCROLL_MAX_RATE)
+    float t = (float)(abs_y - SCROLL_DEADZONE) / (32768.0f - SCROLL_DEADZONE);
+    if (t > 1.0f) t = 1.0f;
+
+    // Apply acceleration power curve
+    float power = (float)current_state.scroll_accel_power / 100.0f;
+    if (power < 0.1f) power = 1.0f;
+    t = powf(t, 1.0f / power);  // inverse: higher power = more acceleration
+
+    int rate = (int)(SCROLL_MIN_RATE - (SCROLL_MIN_RATE - SCROLL_MAX_RATE) * t);
+    if (rate < SCROLL_MAX_RATE) rate = SCROLL_MAX_RATE;
+    if (rate > SCROLL_MIN_RATE) rate = SCROLL_MIN_RATE;
+
+    // Check if enough time has passed since last scroll
+    Uint32 now = SDL_GetTicks();
+    if (scroll_timer != 0 && (now - scroll_timer) < (Uint32)rate)
+        return;
+
+    scroll_timer = now;
+
+    // Emit scroll event (inverted: stick UP = scroll down, stick DOWN = scroll up)
+    int direction = (ay < 0) ? 1 : -1;
+    emitMouseWheel(direction);
 }

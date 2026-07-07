@@ -80,6 +80,9 @@ void state_init()
 
     current_state.dpad_mouse_normalize = true;
 
+    current_state.mouse_accel_power = 100;  // linear (no accel) by default
+    current_state.scroll_accel_power = 200; // quadratic scroll accel
+
     current_state.mouse_delay  = 16;
 
     // Absolute mouse defaults
@@ -841,4 +844,7 @@ void update_button(int btn, bool pressed)
 
     // Poll left analog stick for combo direction detection
     input_dir_analog_poll();
+
+    // Poll right analog stick for adaptive scroll
+    scroll_adaptive_poll();
 }
