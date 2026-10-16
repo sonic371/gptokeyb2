@@ -43,6 +43,10 @@ static SDL_JoystickID existing_controllers[MAX_CONTROLLERS];
 SDL_Haptic *haptic_device = NULL;
 bool haptic_enabled = false;
 
+static SDL_JoystickID haptic_owner = -1;   // controller the haptic belongs to
+static bool haptic_leftright = false;      // LEFTRIGHT effects, else simple rumble
+static int haptic_effect_id = -1;
+
 
 void haptic_init_from_controller(SDL_JoystickID which)
 {
@@ -62,11 +66,13 @@ void haptic_init_from_controller(SDL_JoystickID which)
     if (supported & SDL_HAPTIC_LEFTRIGHT)
     {
         // Prefer LEFTRIGHT — works well on Xbox controllers
+        haptic_leftright = true;
         printf("Haptic initialized (LEFTRIGHT)\n");
     }
     else if (SDL_HapticRumbleInit(haptic) == 0)
     {
         // Fallback to rumble
+        haptic_leftright = false;
         printf("Haptic initialized (rumble)\n");
     }
     else
@@ -76,16 +82,36 @@ void haptic_init_from_controller(SDL_JoystickID which)
     }
 
     haptic_device = haptic;
+    haptic_owner = which;
     haptic_enabled = true;
 }
 
 
-static int haptic_effect_id = -1;
+void haptic_close_for_controller(SDL_JoystickID which)
+{
+    if (!haptic_enabled || which != haptic_owner)
+        return;
+
+    SDL_HapticClose(haptic_device);   // also frees its effects
+
+    haptic_device = NULL;
+    haptic_enabled = false;
+    haptic_owner = -1;
+    haptic_effect_id = -1;
+    printf("Haptic closed\n");
+}
+
 
 void haptic_bump(Uint16 strength, Uint32 duration_ms)
 {
     if (!haptic_enabled || haptic_device == NULL)
         return;
+
+    if (!haptic_leftright)
+    {
+        SDL_HapticRumblePlay(haptic_device, (float)strength / 65535.0f, duration_ms);
+        return;
+    }
 
     // Destroy previous effect if it exists
     if (haptic_effect_id >= 0)
@@ -200,6 +226,7 @@ void handleInputEvent(const SDL_Event *event)
             SDL_GameController* controller = SDL_GameControllerFromInstanceID(event->cdevice.which);
             if (controller)
             {
+                haptic_close_for_controller(event->cdevice.which);
                 controller_remove_fd(event->cdevice.which);
                 SDL_GameControllerClose(controller);
             }

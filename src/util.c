@@ -373,18 +373,11 @@ void emitKey(int fd, int code, bool pressed, int modifier)
 
 void emitTextInputKey(int code, bool uppercase)
 {
-    int mod = 0;
+    int mod = text_input_chord_mods();
 
-    // In text input mode: holding A/B/R1 adds Ctrl/Alt/Shift
-    if (input_active())
-    {
-        if (is_pressed(GBTN_A))
-            mod |= MOD_CTRL;
-        if (is_pressed(GBTN_B))
-            mod |= MOD_ALT;
-        if (is_pressed(GBTN_R1))
-            mod |= MOD_SHIFT;
-    }
+    // Characters like '!' still need shift alongside a chord modifier
+    if (mod != 0 && uppercase)
+        mod |= MOD_SHIFT;
 
     // When mod has SHIFT from R1, the keycode is already the right character
     // (e.g., 'l' stays 'l', no shift key needed). When mod has CTRL from A,

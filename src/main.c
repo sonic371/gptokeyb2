@@ -383,6 +383,10 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    // Haptics are optional: carry on without rumble if this fails.
+    if (SDL_InitSubSystem(SDL_INIT_HAPTIC) != 0)
+        fprintf(stderr, "Haptic init failed, rumble disabled: %s\n", SDL_GetError());
+
     const char* db_file = SDL_getenv("SDL_GAMECONTROLLERCONFIG_FILE");
     if (db_file)
     {
@@ -503,6 +507,11 @@ int main(int argc, char* argv[])
             // sleep.
             // TODO: FIX ME
             SDL_Delay(current_state.mouse_delay);
+        }
+        else if (scroll_adaptive_wait_ms() >= 0) {
+            // Scroll stick is held: wake up regularly even without events.
+            if (SDL_WaitEventTimeout(&event, scroll_adaptive_wait_ms()))
+                handleInputEvent(&event);
         }
         else {
             // GPTK2_DEBUG("-- WAIT FOR EVENT --\n");

@@ -342,6 +342,7 @@ typedef struct
     int deadzone_y;
     int deadzone_triggers;
     int scroll_accel_power;    // 100 = linear, 200 = quadratic, etc
+    bool adaptive_scroll;      // right analog Y scrolls the mouse wheel
 
     int hotkey_gbtn;
     bool running;
@@ -558,10 +559,12 @@ void input_dir_reset_position();
 
 // Adaptive scroll acceleration
 void scroll_adaptive_poll();
+int scroll_adaptive_wait_ms();
 
 // state.c
 bool is_pressed(int btn);
 bool was_pressed(int btn);
+int text_input_chord_mods();
 bool was_released(int btn);
 
 void update_button(int btn, bool pressed);

@@ -99,6 +99,9 @@ static char input_text[MAX_TEXT_LENGTH] = {0};
 
 static int current_letter = 0;
 static size_t current_offset = 0;
+// True when the character at current_offset has been typed as a preview
+// (scroll-style input). Combo input commits without typing a preview.
+static bool preview_shown = false;
 
 static int current_word = 0;
 static size_t current_word_len = 0;
@@ -401,7 +404,10 @@ void input_load_char_set(const char *name)
         current_letter = 0;
         current_word = 0;
         current_word_len = 0;
+        preview_shown = false;
     }
+
+    input_dir_reset_position();
 
     active_char_set = find_char_set(name);
 
@@ -418,7 +424,10 @@ void input_load_char_set(const char *name)
 
     // Don't type a preview character — the combo system or linear scroll
     // will display the first character when the user takes an action.
-    // Just set up the internal state.
+    // If a preview is already on screen, replace it with the new set's letter.
+    if (preview_shown)
+        input_rem_char();
+
     if (input_text[current_offset] == 0)
     {
         current_letter = 0;
@@ -436,6 +445,9 @@ void input_load_char_set(const char *name)
         input_text[current_offset] = active_char_set->characters[current_letter];
     }
 
+    if (preview_shown)
+        input_add_char();
+
     // Clear the active word set
     active_word_set = NULL;
 }
@@ -452,6 +464,7 @@ void input_load_word_set(const char *name)
         current_letter = 0;
         current_word = 0;
         current_word_len = 0;
+        preview_shown = false;
     }
 
     const word_set *temp_wordset = find_word_set(name);;
@@ -584,6 +597,12 @@ void input_clear_state()
 {
     printf("input_clear_state\n");
 
+    if (preview_shown)
+    {
+        input_rem_char();
+        preview_shown = false;
+    }
+
     while (current_offset > 0)
     {
         _input_rem_letter();
@@ -596,6 +615,7 @@ void input_accept()
     printf("input_accept\n");
 
     emitTextInputKey(KEY_ENTER, false);
+    input_dir_reset_position();
     pop_state();
 }
 
@@ -605,6 +625,7 @@ void input_cancel()
     printf("input_cancel\n");
 
     input_clear_state();
+    input_dir_reset_position();
     pop_state();
 }
 
@@ -644,6 +665,9 @@ void input_add_letter()
 
     if (active_char_set != NULL && current_offset < MAX_TEXT_LENGTH)
     {
+        if (!preview_shown)
+            input_add_char();
+
         current_offset++;
 
         if (input_text[current_offset] != 0)
@@ -659,6 +683,7 @@ void input_add_letter()
         input_text[current_offset] = active_char_set->characters[current_letter];
 
         input_add_char();
+        preview_shown = true;
 
         input_dump_state();
     }
@@ -679,8 +704,11 @@ void input_lower_case()
             current_letter = (int)(temp - active_char_set->characters);
             input_text[current_offset] = lower;
 
-            input_rem_char();
-            input_add_char();
+            if (preview_shown)
+            {
+                input_rem_char();
+                input_add_char();
+            }
         }
 
         printf("- lower\n");
@@ -707,8 +735,11 @@ void input_upper_case()
             current_letter = (int)(temp - active_char_set->characters);
             input_text[current_offset] = lower;
 
-            input_rem_char();
-            input_add_char();
+            if (preview_shown)
+            {
+                input_rem_char();
+                input_add_char();
+            }
         }
 
         printf("- lower\n");
@@ -762,7 +793,7 @@ void input_rem_letter()
 
         printf(" - %d\n", current_letter);
 
-        if (input_text[current_offset] != active_char_set->characters[current_letter])
+        if (preview_shown && input_text[current_offset] != active_char_set->characters[current_letter])
         {
             input_rem_char();
             input_text[current_offset] = active_char_set->characters[current_letter];
@@ -786,9 +817,11 @@ void input_next_letter(int amount)
         if (current_letter < 0)
             current_letter += active_char_set->characters_len;
 
-        input_rem_char();
+        if (preview_shown)
+            input_rem_char();
         input_text[current_offset] = active_char_set->characters[current_letter];
         input_add_char();
+        preview_shown = true;
 
         input_dump_state();
     }
@@ -805,9 +838,11 @@ void input_prev_letter(int amount)
         if (current_letter < 0)
             current_letter += active_char_set->characters_len;
 
-        input_rem_char();
+        if (preview_shown)
+            input_rem_char();
         input_text[current_offset] = active_char_set->characters[current_letter];
         input_add_char();
+        preview_shown = true;
 
         input_dump_state();
     }
@@ -975,7 +1010,7 @@ static Uint32 scroll_timer = 0;
 static int stick_active = STICK_NONE;
 
 
-// Call this from state_update() every frame to poll both analog sticks
+// Called from state_update() every frame to poll both analog sticks
 // for direction combo detection. Either stick can be used for input.
 void input_dir_analog_poll()
 {
@@ -1173,6 +1208,10 @@ void input_dir_commit_slot(int slot)
         char_idx = (int)active_char_set->characters_len - 1;
 
     // Type and advance (face button commit — no preview involved)
+    if (preview_shown)
+        input_rem_char();
+    preview_shown = false;
+
     input_text[current_offset] = active_char_set->characters[char_idx];
     input_add_char();
 
@@ -1200,6 +1239,10 @@ void input_dir_commit_current()
         return;  // no group selected, nothing to commit
 
     // Type the character now (no preview was typed during the combo)
+    if (preview_shown)
+        input_rem_char();
+    preview_shown = false;
+
     char c = input_text[current_offset];
     if (c != 0)
     {
@@ -1258,8 +1301,25 @@ void input_dir_reset_position()
 #define SCROLL_MAX_RATE 20    // ms between scrolls at full tilt
 #define SCROLL_MIN_RATE 150   // ms between scrolls at minimum push
 
+
+// How long the main loop may block waiting for events: -1 = forever, or
+// a short timeout while the scroll stick is held so scrolling keeps going.
+int scroll_adaptive_wait_ms()
+{
+    if (!current_state.adaptive_scroll || input_active())
+        return -1;
+
+    if (abs(current_state.current_right_analog_y) < SCROLL_DEADZONE)
+        return -1;
+
+    return SCROLL_MAX_RATE / 2;
+}
+
 void scroll_adaptive_poll()
 {
+    if (!current_state.adaptive_scroll)
+        return;
+
     // Don't scroll while in text input mode (right stick used for combos)
     if (input_active())
         return;

@@ -82,6 +82,7 @@ void state_init()
 
     current_state.mouse_accel_power = 100;  // linear (no accel) by default
     current_state.scroll_accel_power = 200; // quadratic scroll accel
+    current_state.adaptive_scroll = false;
 
     current_state.mouse_delay  = 16;
 
@@ -380,6 +381,12 @@ void state_update()
         current_state.mouse_relative_x = 0;
         current_state.mouse_relative_y = 0;
     }
+
+    // Poll analog sticks for combo direction detection
+    input_dir_analog_poll();
+
+    // Poll right analog stick for adaptive scroll
+    scroll_adaptive_poll();
 }
 
 
@@ -621,6 +628,35 @@ const gptokeyb_button *state_button(int btn)
 }
 
 
+// A chord button only acts as a modifier when it has no binding of its own
+// in the current state, so e.g. "a = add_letter" never sends Ctrl.
+static bool chord_button_free(int btn)
+{
+    const gptokeyb_button *button = state_button(btn);
+
+    return (button == NULL || (button->action == ACT_NONE && button->keycode == 0));
+}
+
+
+// In text input mode: holding an unbound A/B/R1 adds Ctrl/Alt/Shift.
+int text_input_chord_mods()
+{
+    int mod = 0;
+
+    if (!input_active())
+        return 0;
+
+    if (is_pressed(GBTN_A) && chord_button_free(GBTN_A))
+        mod |= MOD_CTRL;
+    if (is_pressed(GBTN_B) && chord_button_free(GBTN_B))
+        mod |= MOD_ALT;
+    if (is_pressed(GBTN_R1) && chord_button_free(GBTN_R1))
+        mod |= MOD_SHIFT;
+
+    return mod;
+}
+
+
 void update_button(int btn, bool pressed)
 {
     Uint32 btn_mask = (1<<btn);
@@ -676,17 +712,7 @@ void update_button(int btn, bool pressed)
 
             if (button->keycode != 0)
             {
-                int mod = button->modifier;
-                // In text input mode only: holding A/B/R1 adds Ctrl/Alt/Shift
-                if (input_active())
-                {
-                    if (is_pressed(GBTN_A))
-                        mod |= MOD_CTRL;
-                    if (is_pressed(GBTN_B))
-                        mod |= MOD_ALT;
-                    if (is_pressed(GBTN_R1))
-                        mod |= MOD_SHIFT;
-                }
+                int mod = button->modifier | text_input_chord_mods();
                 GPTK2_DEBUG("PRESSED '%s' -> '%s'\n", gbtn_names[btn], find_keycode(button->keycode));
                 emitKey(kb_uinp_fd, button->keycode, true, mod);
 
@@ -826,15 +852,7 @@ void update_button(int btn, bool pressed)
 
         if (button->keycode != 0)
         {
-            int mod = button->modifier;
-            // In text input mode only: holding A adds Ctrl, holding R1 adds Shift
-            if (input_active())
-            {
-                if (is_pressed(GBTN_A))
-                    mod |= MOD_CTRL;
-                if (is_pressed(GBTN_R1))
-                    mod |= MOD_SHIFT;
-            }
+            int mod = button->modifier | text_input_chord_mods();
             GPTK2_DEBUG("PRESSED '%s' -> '%s'\n", gbtn_names[btn], find_keycode(button->keycode));
             emitKey(kb_uinp_fd, button->keycode, true, mod);
         }
@@ -865,32 +883,18 @@ void update_button(int btn, bool pressed)
 
         if (button->keycode != 0)
         {
-            int mod = button->modifier;
-            // In text input mode only: holding A adds Ctrl, holding R1 adds Shift
-            if (input_active())
-            {
-                if (is_pressed(GBTN_A))
-                    mod |= MOD_CTRL;
-                if (is_pressed(GBTN_R1))
-                    mod |= MOD_SHIFT;
-            }
+            int mod = button->modifier | text_input_chord_mods();
             GPTK2_DEBUG("RELEASE '%s' -> '%s'\n", gbtn_names[btn], find_keycode(button->keycode));
             emitKey(kb_uinp_fd, button->keycode, false, mod);
         }
 
-        // When A, B, or R1 are released, always release their modifier
-        if (btn == GBTN_A)
+        // When a chord button is released, always release its modifier
+        if (btn == GBTN_A && chord_button_free(GBTN_A))
             emitModifier(false, MOD_CTRL);
-        if (btn == GBTN_B)
+        if (btn == GBTN_B && chord_button_free(GBTN_B))
             emitModifier(false, MOD_ALT);
-        if (btn == GBTN_R1)
+        if (btn == GBTN_R1 && chord_button_free(GBTN_R1))
             emitModifier(false, MOD_SHIFT);
 
     }
-
-    // Poll left analog stick for combo direction detection
-    input_dir_analog_poll();
-
-    // Poll right analog stick for adaptive scroll
-    scroll_adaptive_poll();
 }
