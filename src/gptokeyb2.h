@@ -61,7 +61,7 @@
 #define GPTK2_VERSION "2.00.03"
 
 // Uncomment for verbose debug output:
-#define GPTK2_DEBUG_ENABLED
+// #define GPTK2_DEBUG_ENABLED
 
 // DEBUGGAH
 #ifdef GPTK2_DEBUG_ENABLED
@@ -438,9 +438,8 @@ extern char kill_process_name[];
 extern char game_prefix[];
 
 // Haptic/rumble feedback
-extern SDL_Haptic *haptic_device;
-extern bool haptic_enabled;
 void haptic_bump(Uint16 strength, Uint32 duration_ms);
+void haptic_quit();
 
 // config.c
 void config_init();

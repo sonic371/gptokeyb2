@@ -39,98 +39,55 @@
 
 static SDL_JoystickID existing_controllers[MAX_CONTROLLERS];
 
-// Haptic/rumble globals
-SDL_Haptic *haptic_device = NULL;
-bool haptic_enabled = false;
-
-static SDL_JoystickID haptic_owner = -1;   // controller the haptic belongs to
-static bool haptic_leftright = false;      // LEFTRIGHT effects, else simple rumble
-static int haptic_effect_id = -1;
+// Haptic/rumble: uses SDL's game controller rumble, which also works for
+// controllers driven by SDL's HIDAPI drivers (e.g. Switch Pro Controller),
+// where the older SDL_Haptic API can't open the device.
+static SDL_GameController *rumble_controller = NULL;
+static SDL_JoystickID rumble_owner = -1;   // controller the rumble belongs to
 
 
-void haptic_init_from_controller(SDL_JoystickID which)
+void haptic_init_from_controller(SDL_GameController *controller, SDL_JoystickID which)
 {
-    if (haptic_enabled)
+    if (rumble_controller != NULL)
         return; // already initialized
 
-    SDL_Joystick *joy = SDL_JoystickFromInstanceID(which);
-    if (joy == NULL)
+    if (!SDL_GameControllerHasRumble(controller))
         return;
 
-    SDL_Haptic *haptic = SDL_HapticOpenFromJoystick(joy);
-    if (haptic == NULL)
-        return;
-
-    // Check what's supported
-    unsigned int supported = SDL_HapticQuery(haptic);
-    if (supported & SDL_HAPTIC_LEFTRIGHT)
-    {
-        // Prefer LEFTRIGHT — works well on Xbox controllers
-        haptic_leftright = true;
-        printf("Haptic initialized (LEFTRIGHT)\n");
-    }
-    else if (SDL_HapticRumbleInit(haptic) == 0)
-    {
-        // Fallback to rumble
-        haptic_leftright = false;
-        printf("Haptic initialized (rumble)\n");
-    }
-    else
-    {
-        SDL_HapticClose(haptic);
-        return;
-    }
-
-    haptic_device = haptic;
-    haptic_owner = which;
-    haptic_enabled = true;
+    rumble_controller = controller;
+    rumble_owner = which;
+    printf("Rumble initialized\n");
 }
 
 
 void haptic_close_for_controller(SDL_JoystickID which)
 {
-    if (!haptic_enabled || which != haptic_owner)
+    if (rumble_controller == NULL || which != rumble_owner)
         return;
 
-    SDL_HapticClose(haptic_device);   // also frees its effects
-
-    haptic_device = NULL;
-    haptic_enabled = false;
-    haptic_owner = -1;
-    haptic_effect_id = -1;
-    printf("Haptic closed\n");
+    rumble_controller = NULL;
+    rumble_owner = -1;
+    printf("Rumble closed\n");
 }
 
 
 void haptic_bump(Uint16 strength, Uint32 duration_ms)
 {
-    if (!haptic_enabled || haptic_device == NULL)
+    if (rumble_controller == NULL)
         return;
 
-    if (!haptic_leftright)
-    {
-        SDL_HapticRumblePlay(haptic_device, (float)strength / 65535.0f, duration_ms);
-        return;
-    }
+    // A new call replaces any rumble still playing.
+    SDL_GameControllerRumble(rumble_controller, strength, strength, duration_ms);
+}
 
-    // Destroy previous effect if it exists
-    if (haptic_effect_id >= 0)
-        SDL_HapticDestroyEffect(haptic_device, haptic_effect_id);
 
-    // Xbox 360 controllers on Linux support SDL_HAPTIC_LEFTRIGHT
-    // (left/right motor weights). Reuse one effect slot.
-    SDL_HapticEffect effect;
-    memset(&effect, 0, sizeof(effect));
-    effect.type = SDL_HAPTIC_LEFTRIGHT;
-    effect.leftright.length = duration_ms;
-    effect.leftright.large_magnitude = strength;
-    effect.leftright.small_magnitude = strength;
+void haptic_quit()
+{
+    if (rumble_controller != NULL)
+        SDL_GameControllerRumble(rumble_controller, 0, 0, 0);
 
-    haptic_effect_id = SDL_HapticNewEffect(haptic_device, &effect);
-    if (haptic_effect_id >= 0)
-    {
-        SDL_HapticRunEffect(haptic_device, haptic_effect_id, 1);
-    }
+    rumble_controller = NULL;
+    rumble_owner = -1;
 }
 
 static int num_existing_controllers = 0;
@@ -213,9 +170,8 @@ void handleInputEvent(const SDL_Event *event)
                 {
                     printf(" opened.\n");
                     controller_add_fd(event->cdevice.which, controller_fd);
-                    // Initialize haptic on the first real controller
-                    if (!haptic_enabled)
-                        haptic_init_from_controller(instance_id);
+                    // Initialize rumble on the first real controller
+                    haptic_init_from_controller(controller, instance_id);
                 }
             }
         }

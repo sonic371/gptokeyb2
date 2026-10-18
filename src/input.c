@@ -955,13 +955,25 @@ static void dir_show_slot()
 
 // Analog stick deadzone for direction detection
 #define DIR_STICK_DEADZONE 12000
+// Once a direction is held, the stick only counts as centered again below
+// this. The gap stops noisy sticks flickering in and out of the deadzone.
+#define DIR_STICK_RELEASE 8000
 // Diagonal ratio: one axis must be this many times stronger than the other
-// to register as a cardinal direction. Prevents accidental diagonals.
-#define DIR_DIAGONAL_RATIO 2.0f
+// to register as a cardinal direction. Near a diagonal the last direction is
+// kept, so noise can't flip between two neighbouring directions.
+#define DIR_DIAGONAL_RATIO 1.5f
 
 // Track last stick direction for edge detection
 static int dir_stick_last_dir = -1;  // -1 = centered, 0-3 = direction
-// Debounce time: ignore direction changes within this many ms
+
+
+static int dir_stick_mag(int ax, int ay)
+{
+    int abs_x = abs(ax);
+    int abs_y = abs(ay);
+
+    return (abs_x > abs_y) ? abs_x : abs_y;
+}
 
 
 // Determine which cardinal direction the stick is pointing, with diagonal
@@ -971,24 +983,21 @@ static int dir_get_stick_dir(int ax, int ay)
     int abs_x = abs(ax);
     int abs_y = abs(ay);
 
-    // Must be outside the center deadzone
-    if (abs_x < DIR_STICK_DEADZONE && abs_y < DIR_STICK_DEADZONE)
+    // Must be outside the center deadzone (smaller once a direction is held)
+    int threshold = (dir_stick_last_dir >= 0) ? DIR_STICK_RELEASE : DIR_STICK_DEADZONE;
+    if (dir_stick_mag(ax, ay) < threshold)
         return -1;
 
-    // Diagonal exclusion: one axis must dominate by at least DIR_DIAGONAL_RATIO
-    // Unless one axis is very strongly pushed (>22000), in which case
-    // we trust it as a clear cardinal intent.
-    bool strong_axis = (abs_x > 22000 || abs_y > 22000);
+    // Diagonal exclusion: one axis must dominate by at least DIR_DIAGONAL_RATIO,
+    // even at full tilt — rolling along the rim passes right through diagonals.
+    int big   = (abs_x > abs_y) ? abs_x : abs_y;
+    int small = (abs_x > abs_y) ? abs_y : abs_x;
 
-    if (!strong_axis)
+    if ((float)big < (float)small * DIR_DIAGONAL_RATIO)
     {
-        float ratio = (abs_x > abs_y) ? ((float)abs_x / abs_y) : ((float)abs_y / abs_x);
-        if (ratio < DIR_DIAGONAL_RATIO)
-        {
-            // Too close to a diagonal — this is ambiguous.
-            // Keep the last known direction (if any) to avoid flickering.
-            return dir_stick_last_dir;
-        }
+        // Too close to a diagonal — this is ambiguous.
+        // Keep the last known direction (if any) to avoid flickering.
+        return dir_stick_last_dir;
     }
 
     // Clean cardinal direction
@@ -1024,8 +1033,8 @@ void input_dir_analog_poll()
     int ax = 0, ay = 0;
 
     // Determine which stick has movement
-    int left_mag  = abs(lx) + abs(ly);
-    int right_mag = abs(rx) + abs(ry);
+    int left_mag  = dir_stick_mag(lx, ly);
+    int right_mag = dir_stick_mag(rx, ry);
 
     int pick = STICK_NONE;
 
@@ -1049,7 +1058,7 @@ void input_dir_analog_poll()
         if (right_mag > left_mag && right_mag > DIR_STICK_DEADZONE)
             pick = STICK_RIGHT;
         else
-            pick = (left_mag > DIR_STICK_DEADZONE) ? STICK_LEFT : STICK_NONE;
+            pick = (left_mag > DIR_STICK_RELEASE) ? STICK_LEFT : STICK_NONE;
     }
     else // STICK_RIGHT
     {
@@ -1057,7 +1066,7 @@ void input_dir_analog_poll()
         if (left_mag > right_mag && left_mag > DIR_STICK_DEADZONE)
             pick = STICK_LEFT;
         else
-            pick = (right_mag > DIR_STICK_DEADZONE) ? STICK_RIGHT : STICK_NONE;
+            pick = (right_mag > DIR_STICK_RELEASE) ? STICK_RIGHT : STICK_NONE;
     }
 
     if (pick == STICK_NONE)
@@ -1093,10 +1102,7 @@ void input_dir_analog_poll()
     {
         if (stick_dir >= 0)
         {
-            // Haptic feedback for landing on a cardinal direction
-            haptic_bump(0x2FFF, 15);
-
-            // Treat this as a combo press
+            // Treat this as a combo press (it gives the haptic feedback)
             input_dir_combo_press(stick_dir);
         }
         else
@@ -1174,6 +1180,7 @@ void input_dir_combo_press(int direction)
     // Start a new combo
     combo_first_dir = direction;
     combo_first_time = now;
+    haptic_bump(0x2FFF, 15);
 }
 
 

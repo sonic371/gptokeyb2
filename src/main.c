@@ -383,10 +383,6 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    // Haptics are optional: carry on without rumble if this fails.
-    if (SDL_InitSubSystem(SDL_INIT_HAPTIC) != 0)
-        fprintf(stderr, "Haptic init failed, rumble disabled: %s\n", SDL_GetError());
-
     const char* db_file = SDL_getenv("SDL_GAMECONTROLLERCONFIG_FILE");
     if (db_file)
     {
@@ -525,11 +521,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (haptic_device != NULL)
-    {
-        SDL_HapticStopAll(haptic_device);
-        SDL_HapticClose(haptic_device);
-    }
+    haptic_quit();
 
     SDL_Quit();
 
