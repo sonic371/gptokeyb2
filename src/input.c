@@ -1305,8 +1305,8 @@ void input_dir_reset_position()
 // proportional to how far the stick is pushed.
 
 #define SCROLL_DEADZONE 5000
-#define SCROLL_MAX_RATE 20    // ms between scrolls at full tilt
 #define SCROLL_MIN_RATE 150   // ms between scrolls at minimum push
+// ms between scrolls at full tilt comes from current_state.scroll_fastest_ms
 
 
 // How long the main loop may block waiting for events: -1 = forever, or
@@ -1319,7 +1319,7 @@ int scroll_adaptive_wait_ms()
     if (abs(current_state.current_right_analog_y) < SCROLL_DEADZONE)
         return -1;
 
-    return SCROLL_MAX_RATE / 2;
+    return current_state.scroll_fastest_ms / 2;
 }
 
 void scroll_adaptive_poll()
@@ -1342,17 +1342,18 @@ void scroll_adaptive_poll()
     }
 
     // Calculate scroll rate based on stick magnitude
-    // Map stick magnitude (SCROLL_DEADZONE..32768) to rate (SCROLL_MIN_RATE..SCROLL_MAX_RATE)
+    // Map stick magnitude (SCROLL_DEADZONE..32768) to rate (SCROLL_MIN_RATE..scroll_fastest_ms)
     float t = (float)(abs_y - SCROLL_DEADZONE) / (32768.0f - SCROLL_DEADZONE);
     if (t > 1.0f) t = 1.0f;
 
     // Apply acceleration power curve
     float power = (float)current_state.scroll_accel_power / 100.0f;
     if (power < 0.1f) power = 1.0f;
-    t = powf(t, 1.0f / power);  // inverse: higher power = more acceleration
+    t = powf(t, power);  // higher power = gentler on small pushes, faster near full tilt
 
-    int rate = (int)(SCROLL_MIN_RATE - (SCROLL_MIN_RATE - SCROLL_MAX_RATE) * t);
-    if (rate < SCROLL_MAX_RATE) rate = SCROLL_MAX_RATE;
+    int fastest = current_state.scroll_fastest_ms;
+    int rate = (int)(SCROLL_MIN_RATE - (SCROLL_MIN_RATE - fastest) * t);
+    if (rate < fastest) rate = fastest;
     if (rate > SCROLL_MIN_RATE) rate = SCROLL_MIN_RATE;
 
     // Check if enough time has passed since last scroll

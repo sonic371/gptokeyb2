@@ -83,6 +83,7 @@ void state_init()
     current_state.mouse_accel_power = 100;  // linear (no accel) by default
     current_state.scroll_accel_power = 200; // quadratic scroll accel
     current_state.adaptive_scroll = false;
+    current_state.scroll_fastest_ms = 40;
 
     current_state.mouse_delay  = 16;
 

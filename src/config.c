@@ -307,6 +307,7 @@ void config_dump()
     printf("deadzone_triggers = %d\n", current_state.deadzone_triggers);
     printf("dpad_mouse_normalize = %s\n", (current_state.dpad_mouse_normalize ? "true" : "false" ));
     printf("adaptive_scroll = %s\n", (current_state.adaptive_scroll ? "true" : "false" ));
+    printf("scroll_fastest_ms = %d\n", current_state.scroll_fastest_ms);
     printf("absolute_center_x = %d\n", current_state.absolute_center_x);
     printf("absolute_center_y = %d\n", current_state.absolute_center_y);
     printf("absolute_step = %d\n", current_state.absolute_step);
@@ -727,6 +728,9 @@ void set_cfg_config(const char *name, const char *value, token_ctx *token_state)
 
     else if (strcasecmp(name, "adaptive_scroll") == 0)
         current_state.adaptive_scroll = atob_default(value, false);
+
+    else if (strcasecmp(name, "scroll_fastest_ms") == 0)
+        current_state.scroll_fastest_ms = atoi_between(value, 10, 150, 40);
 
     else if (strcasecmp(name, "deadzone_delay") == 0)
         ((void)0);

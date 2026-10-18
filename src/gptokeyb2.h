@@ -343,6 +343,7 @@ typedef struct
     int deadzone_triggers;
     int scroll_accel_power;    // 100 = linear, 200 = quadratic, etc
     bool adaptive_scroll;      // right analog Y scrolls the mouse wheel
+    int scroll_fastest_ms;     // ms between scroll notches at full tilt
 
     int hotkey_gbtn;
     bool running;
