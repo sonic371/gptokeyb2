@@ -85,6 +85,11 @@ void state_init()
     current_state.adaptive_scroll = false;
     current_state.scroll_fastest_ms = 40;
 
+    current_state.dir_stick_deadzone = 12000;
+    current_state.dir_stick_release  = 8000;
+    current_state.dir_diagonal_ratio = 150;
+    current_state.dir_combo_timeout  = 600;
+
     current_state.mouse_delay  = 16;
 
     // Absolute mouse defaults
@@ -379,8 +384,8 @@ void state_update()
     // We don't need to rest absolute values only relative movement
     if (!current_left_analog_as_mouse && !current_right_analog_as_mouse)
     {
-        current_state.mouse_relative_x = 0;
-        current_state.mouse_relative_y = 0;
+        current_state.mouse_relative_x = 0.0f;
+        current_state.mouse_relative_y = 0.0f;
     }
 
     // Poll analog sticks for combo direction detection

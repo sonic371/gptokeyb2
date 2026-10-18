@@ -420,6 +420,10 @@ int main(int argc, char* argv[])
     int mouse_y=0;
     bool mouse_moved=false;
     vector2d mouse_move;
+    // Sub-pixel movement carried over between updates, so slow stick
+    // pushes still move the mouse instead of rounding down to 0.
+    float mouse_frac_x=0.0f;
+    float mouse_frac_y=0.0f;
     float slow_scale = (100.0 / (float)(current_state.mouse_slow_scale));
 
     while (current_state.running)
@@ -435,12 +439,12 @@ int main(int argc, char* argv[])
 
         state_update();
 
-        if (current_state.mouse_relative_x != 0 ||
-            current_state.mouse_relative_y != 0 ||
+        if (current_state.mouse_relative_x != 0.0f ||
+            current_state.mouse_relative_y != 0.0f ||
             current_dpad_as_mouse)
         {
-            mouse_x = current_state.mouse_relative_x;
-            mouse_y = current_state.mouse_relative_y;
+            float move_x = current_state.mouse_relative_x;
+            float move_y = current_state.mouse_relative_y;
 
             if (current_dpad_as_mouse > 0)
             {
@@ -454,22 +458,38 @@ int main(int argc, char* argv[])
                 if (current_state.dpad_mouse_normalize)
                     vector2d_normalize(&mouse_move);
 
-                mouse_x += (int)(mouse_move.x * current_state.dpad_mouse_step);
-                mouse_y += (int)(mouse_move.y * current_state.dpad_mouse_step);
+                move_x += mouse_move.x * current_state.dpad_mouse_step;
+                move_y += mouse_move.y * current_state.dpad_mouse_step;
             }
 
             if (current_state.mouse_slow)
             {
-                mouse_x = (int)((float)(mouse_x) / slow_scale);
-                mouse_y = (int)((float)(mouse_y) / slow_scale);
+                move_x /= slow_scale;
+                move_y /= slow_scale;
             }
 
-            emitRelativeMouseMotion(mouse_x, mouse_y);
+            if (move_x == 0.0f && move_y == 0.0f)
+            {   // stopped: drop leftovers so the next move starts clean
+                mouse_frac_x = 0.0f;
+                mouse_frac_y = 0.0f;
+            }
+
+            mouse_frac_x += move_x;
+            mouse_frac_y += move_y;
+            mouse_x = (int)mouse_frac_x;
+            mouse_y = (int)mouse_frac_y;
+            mouse_frac_x -= (float)mouse_x;
+            mouse_frac_y -= (float)mouse_y;
 
             if (mouse_x != 0 || mouse_y != 0) {
-                mouse_moved=true;
+                emitRelativeMouseMotion(mouse_x, mouse_y);
                 GPTK2_DEBUG("relative mouse move %d %d\n", mouse_x, mouse_y);
             }
+
+            // Keep ticking while the stick is pushed, even if this update
+            // moved less than a pixel, so the fractions keep adding up.
+            if (move_x != 0.0f || move_y != 0.0f)
+                mouse_moved=true;
         }
 
         if (current_state.mouse_absolute_x != 0 || current_state.mouse_absolute_y != 0)

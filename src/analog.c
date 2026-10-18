@@ -265,7 +265,7 @@ void deadzone_trigger_calc(int *analog, int analog_in)
 }
 
 
-void deadzone_mouse_calc(int *x, int *y, int in_x, int in_y)
+void deadzone_mouse_calc(float *x, float *y, int in_x, int in_y)
 {
     vector2d vec2d_input;
     vector2d vec2d_ouput;
@@ -312,7 +312,7 @@ void deadzone_mouse_calc(int *x, int *y, int in_x, int in_y)
         break;
     }
 
-    *x = (int)(vec2d_ouput.x * (float)current_state.deadzone_scale);
-    *y = (int)(vec2d_ouput.y * (float)current_state.deadzone_scale);
+    *x = vec2d_ouput.x * (float)current_state.deadzone_scale;
+    *y = vec2d_ouput.y * (float)current_state.deadzone_scale;
 }
 

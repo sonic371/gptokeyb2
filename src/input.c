@@ -893,7 +893,8 @@ void input_prev_word(int amount)
 //
 // The 8 groups each have up to 4 characters, selected by slots 0-3.
 
-#define COMBO_TIMEOUT_MS 600
+// Configurable with dir_combo_timeout in [config].
+#define COMBO_TIMEOUT_MS ((Uint32)current_state.dir_combo_timeout)
 
 // Last D-pad direction pressed (for combo detection)
 static int combo_first_dir = -1;   // 0=RIGHT, 1=UP, 2=LEFT, 3=DOWN, -1=none
@@ -954,14 +955,18 @@ static void dir_show_slot()
 
 
 // Analog stick deadzone for direction detection
-#define DIR_STICK_DEADZONE 12000
+// Configurable with dir_stick_deadzone in [config].
+#define DIR_STICK_DEADZONE (current_state.dir_stick_deadzone)
 // Once a direction is held, the stick only counts as centered again below
 // this. The gap stops noisy sticks flickering in and out of the deadzone.
-#define DIR_STICK_RELEASE 8000
+// Configurable with dir_stick_release in [config]; never above the deadzone.
+#define DIR_STICK_RELEASE (current_state.dir_stick_release < current_state.dir_stick_deadzone ? \
+                           current_state.dir_stick_release : current_state.dir_stick_deadzone)
 // Diagonal ratio: one axis must be this many times stronger than the other
 // to register as a cardinal direction. Near a diagonal the last direction is
 // kept, so noise can't flip between two neighbouring directions.
-#define DIR_DIAGONAL_RATIO 1.5f
+// Configurable with dir_diagonal_ratio in [config] (percent: 150 = 1.5).
+#define DIR_DIAGONAL_RATIO ((float)current_state.dir_diagonal_ratio / 100.0f)
 
 // Track last stick direction for edge detection
 static int dir_stick_last_dir = -1;  // -1 = centered, 0-3 = direction

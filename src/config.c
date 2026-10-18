@@ -308,6 +308,10 @@ void config_dump()
     printf("dpad_mouse_normalize = %s\n", (current_state.dpad_mouse_normalize ? "true" : "false" ));
     printf("adaptive_scroll = %s\n", (current_state.adaptive_scroll ? "true" : "false" ));
     printf("scroll_fastest_ms = %d\n", current_state.scroll_fastest_ms);
+    printf("dir_stick_deadzone = %d\n", current_state.dir_stick_deadzone);
+    printf("dir_stick_release = %d\n", current_state.dir_stick_release);
+    printf("dir_diagonal_ratio = %d\n", current_state.dir_diagonal_ratio);
+    printf("dir_combo_timeout = %d\n", current_state.dir_combo_timeout);
     printf("absolute_center_x = %d\n", current_state.absolute_center_x);
     printf("absolute_center_y = %d\n", current_state.absolute_center_y);
     printf("absolute_step = %d\n", current_state.absolute_step);
@@ -731,6 +735,18 @@ void set_cfg_config(const char *name, const char *value, token_ctx *token_state)
 
     else if (strcasecmp(name, "scroll_fastest_ms") == 0)
         current_state.scroll_fastest_ms = atoi_between(value, 10, 150, 40);
+
+    else if (strcasecmp(name, "dir_stick_deadzone") == 0)
+        current_state.dir_stick_deadzone = atoi_between(value, 2000, 30000, 12000);
+
+    else if (strcasecmp(name, "dir_stick_release") == 0)
+        current_state.dir_stick_release = atoi_between(value, 1000, 30000, 8000);
+
+    else if (strcasecmp(name, "dir_diagonal_ratio") == 0)
+        current_state.dir_diagonal_ratio = atoi_between(value, 100, 400, 150);
+
+    else if (strcasecmp(name, "dir_combo_timeout") == 0)
+        current_state.dir_combo_timeout = atoi_between(value, 100, 3000, 600);
 
     else if (strcasecmp(name, "deadzone_delay") == 0)
         ((void)0);

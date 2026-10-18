@@ -315,8 +315,8 @@ typedef struct
     int current_l2;
     int current_r2;
 
-    int mouse_relative_x;
-    int mouse_relative_y;
+    float mouse_relative_x;   // pixels per update, fractions carried over in main loop
+    float mouse_relative_y;
 
     bool absolute_invert_x;
     bool absolute_invert_y;
@@ -344,6 +344,12 @@ typedef struct
     int scroll_accel_power;    // 100 = linear, 200 = quadratic, etc
     bool adaptive_scroll;      // right analog Y scrolls the mouse wheel
     int scroll_fastest_ms;     // ms between scroll notches at full tilt
+
+    // 8pen stick input
+    int dir_stick_deadzone;    // push needed before a direction registers
+    int dir_stick_release;     // below this the stick counts as centered (commit)
+    int dir_diagonal_ratio;    // 150 = dominant axis must be 1.5x the other
+    int dir_combo_timeout;     // max ms between the two directions of a combo
 
     int hotkey_gbtn;
     bool running;
@@ -465,7 +471,7 @@ float vector2d_magnitude(const vector2d *vec2d);
 int deadzone_get_mode(const char *str);
 const char *deadzone_mode_str(int mode);
 void deadzone_trigger_calc(int *analog, int analog_in);
-void deadzone_mouse_calc(int *x, int *y, int in_x, int in_y);
+void deadzone_mouse_calc(float *x, float *y, int in_x, int in_y);
 
 // keys.c
 const keyboard_values *find_keyboard(const char *key);
