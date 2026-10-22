@@ -93,6 +93,84 @@ void haptic_quit()
 static int num_existing_controllers = 0;
 static SDL_JoystickID virtual_controller_id = -1;
 
+
+// Switch controllers can reach SDL two ways: through SDL's own Switch driver
+// (hidraw) or through the kernel hid_nintendo driver (/dev/input/event*).
+// The kernel path paces every rumble packet and often stalls for ~250ms, so
+// rumble lags badly. SDL sometimes picks it for the first controller to
+// connect after startup; restarting SDL's controller handling makes it
+// enumerate again and pick its own driver, like a reconnect does.
+#define SWITCH_REOPEN_DELAY_MS 500
+#define SWITCH_REOPEN_MAX_ATTEMPTS 3
+
+static int switch_reopen_attempts = 0;
+static Uint32 switch_reopen_event = (Uint32)-1;
+
+
+static bool switch_on_kernel_driver(SDL_Joystick *joystick)
+{
+    const char *path = SDL_JoystickPath(joystick);
+
+    return (SDL_JoystickGetVendor(joystick) == 0x057e &&
+            path != NULL && strncmp(path, "/dev/input/", 11) == 0);
+}
+
+
+static Uint32 switch_reopen_timer(Uint32 interval, void *param)
+{   // runs on SDL's timer thread: just wake the main loop
+    (void)interval;
+    (void)param;
+
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = switch_reopen_event;
+    SDL_PushEvent(&event);
+
+    return 0;
+}
+
+
+static bool switch_schedule_reopen()
+{
+    if (xbox360_mode || switch_reopen_attempts >= SWITCH_REOPEN_MAX_ATTEMPTS)
+        return false;
+
+    if (switch_reopen_event == (Uint32)-1)
+    {
+        switch_reopen_event = SDL_RegisterEvents(1);
+
+        if (switch_reopen_event == (Uint32)-1)
+            return false;
+    }
+
+    if (SDL_AddTimer(SWITCH_REOPEN_DELAY_MS, switch_reopen_timer, NULL) == 0)
+        return false;
+
+    switch_reopen_attempts++;
+    return true;
+}
+
+
+static void switch_reopen_controllers()
+{
+    printf("Reopening controllers (attempt %d)\n", switch_reopen_attempts);
+
+    // Restarting the subsystem closes every controller, so drop what we hold.
+    haptic_quit();
+    controller_clear_fds();
+
+    // Hold an extra reference so the event queue survives the restart.
+    SDL_InitSubSystem(SDL_INIT_EVENTS);
+
+    SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+
+    // Controllers already connected come back as SDL_CONTROLLERDEVICEADDED.
+    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
+        fprintf(stderr, "Reopening controllers failed: %s\n", SDL_GetError());
+
+    SDL_QuitSubSystem(SDL_INIT_EVENTS);
+}
+
 // Helper function to check if an ID exists in the array
 bool isExistingController(SDL_JoystickID id) {
     for (int i = 0; i < num_existing_controllers; i++) {
@@ -166,9 +244,19 @@ void handleInputEvent(const SDL_Event *event)
                     printf(" closed because it's our own controller.\n");
                     SDL_GameControllerClose(controller);
                 }
+                else if (switch_on_kernel_driver(joystick) && switch_schedule_reopen())
+                {
+                    printf(" opened through the kernel driver (%s), reopening for faster rumble.\n",
+                        SDL_JoystickPath(joystick));
+                    SDL_GameControllerClose(controller);
+                }
                 else
                 {
                     printf(" opened.\n");
+
+                    if (SDL_JoystickGetVendor(joystick) == 0x057e && !switch_on_kernel_driver(joystick))
+                        switch_reopen_attempts = 0;
+
                     controller_add_fd(event->cdevice.which, controller_fd);
                     // Initialize rumble on the first real controller
                     haptic_init_from_controller(controller, instance_id);
@@ -182,6 +270,9 @@ void handleInputEvent(const SDL_Event *event)
             SDL_GameController* controller = SDL_GameControllerFromInstanceID(event->cdevice.which);
             if (controller)
             {
+                // A fresh connection gets fresh reopen attempts.
+                switch_reopen_attempts = 0;
+
                 haptic_close_for_controller(event->cdevice.which);
                 controller_remove_fd(event->cdevice.which);
                 SDL_GameControllerClose(controller);
@@ -192,5 +283,10 @@ void handleInputEvent(const SDL_Event *event)
     case SDL_QUIT:
         current_state.running = false;
         return;
+
+    default:
+        if (event->type == switch_reopen_event)
+            switch_reopen_controllers();
+        break;
     }
 }

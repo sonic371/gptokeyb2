@@ -183,6 +183,29 @@ void controller_remove_fd(Sint32 which)
 }
 
 
+void controller_clear_fds()
+{   // forget all controller fds (used before reopening every controller)
+    controller_fd *current_fd = controller_fds;
+    controller_fd *next_fd = NULL;
+
+    while (current_fd != NULL)
+    {
+        next_fd = current_fd->next;
+
+        if (exclusive_mode)
+        {
+            ioctl(current_fd->fd, EVIOCGRAB, 0);
+        }
+
+        free(current_fd);
+
+        current_fd = next_fd;
+    }
+
+    controller_fds = NULL;
+}
+
+
 void controllers_enable_exclusive()
 {
     controller_fd *current_fd = controller_fds;

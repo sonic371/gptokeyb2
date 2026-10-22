@@ -590,6 +590,7 @@ void controllers_disable_exclusive();
 
 void controller_add_fd(Sint32 which, int fd);
 void controller_remove_fd(Sint32 which);
+void controller_clear_fds();
 
 // event.c
 bool isExistingController(SDL_JoystickID id);
